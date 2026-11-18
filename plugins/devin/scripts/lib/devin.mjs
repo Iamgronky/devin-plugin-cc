@@ -273,10 +273,13 @@ export function findTaskResumeCandidate(cwd) {
 
 export function runDevinPrint({ cwd, args, onStderr = null, onSpawn = null } = {}) {
   return new Promise((resolve, reject) => {
-    const child = spawn(getDevinBinary(), args, {
+    const binary = getDevinBinary();
+    const child = spawn(binary, args, {
       cwd,
       env: process.env,
       stdio: ["ignore", "pipe", "pipe"],
+      // .cmd/.bat binaries (e.g. test fixtures, npm shims) require a shell on Windows.
+      shell: process.platform === "win32" && /\.(cmd|bat)$/i.test(binary),
       // Own process group so kill(-pid) tears down devin and anything it spawns.
       detached: process.platform !== "win32",
       windowsHide: true

@@ -104,7 +104,9 @@ test("app bundle candidate is ignored off macOS", () => {
   }
 });
 
-test("non-executable files and directories are skipped", () => {
+// Windows has no exec bit — fs.accessSync(X_OK) passes for every file, so
+// the non-executable-skip behavior is only meaningful on POSIX.
+test("non-executable files and directories are skipped", { skip: process.platform === "win32" }, () => {
   const root = makeDir("devin-resolve-");
   try {
     const plainFile = path.join(root, "plain", "devin");
@@ -167,7 +169,8 @@ test("setup reports not installed when no devin is reachable", () => {
     const { result, report } = runSetup({ PATH: emptyPath, [DESKTOP_CANDIDATE_ENV]: path.join(emptyPath, "missing") }, repo.dir);
     assert.equal(result.status, 0, result.stderr);
     assert.equal(report.devin.installed, false);
-    assert.equal(report.devin.path, null);
+    // Windows resolves to bare "devin" for shell PATH lookup even when unreachable.
+    assert.equal(report.devin.path, process.platform === "win32" ? "devin" : null);
     assert.equal(report.ready, false);
   } finally {
     fs.rmSync(emptyPath, { recursive: true, force: true });
@@ -175,7 +178,9 @@ test("setup reports not installed when no devin is reachable", () => {
   }
 });
 
-test("Desktop-only machine: setup and task use the app-bundle binary", () => {
+// Desktop app-bundle resolution only exists on macOS; on Windows the
+// resolver returns bare "devin" for shell PATH lookup before candidates.
+test("Desktop-only machine: setup and task use the app-bundle binary", { skip: process.platform === "win32" }, () => {
   const repo = createTempRepo();
   const fake = createFakeDevin({ responseText: "FROM_BUNDLE" });
   const emptyPath = makeToolOnlyPath();
@@ -216,7 +221,9 @@ test("PATH devin wins over the app bundle in the companion", () => {
   const bundle = createFakeDevin();
   try {
     const { report } = runSetup({ PATH: onPath.dir, [DESKTOP_CANDIDATE_ENV]: bundle.binPath }, repo.dir);
-    assert.equal(report.devin.path, path.join(onPath.dir, "devin"));
+    // On Windows the resolver returns bare "devin" — the shell does PATH/PATHEXT lookup.
+    const expectedPath = process.platform === "win32" ? "devin" : path.join(onPath.dir, "devin");
+    assert.equal(report.devin.path, expectedPath);
     assert.equal(report.devin.source, "PATH");
   } finally {
     onPath.cleanup();

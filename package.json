@@ -9,6 +9,7 @@
   "scripts": {
     "prepare": "node scripts/install.mjs",
     "doctor": "node plugins/devin/scripts/devin-companion.mjs setup",
+    "lint": "node scripts/syntax-check.mjs",
     "test": "node --test"
   },
   "bin": {
