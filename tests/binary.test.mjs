@@ -74,13 +74,21 @@ test("devin on PATH beats the app bundle", () => {
   }
 });
 
-test("Desktop-only install selects the app bundle and uses its realpath", () => {
+test("Desktop-only install selects the app bundle and uses its realpath", (t) => {
   const root = makeDir("devin-resolve-");
   try {
     const real = makeExecutable(path.join(root, "real", "devin"));
     const link = path.join(root, "Devin.app", "devin");
     fs.mkdirSync(path.dirname(link), { recursive: true });
-    fs.symlinkSync(real, link);
+    try {
+      fs.symlinkSync(real, link);
+    } catch (error) {
+      if (error.code === "EPERM" || error.code === "EACCES") {
+        t.skip("symlinks are not permitted on this host (no Developer Mode / elevation)");
+        return;
+      }
+      throw error;
+    }
     const resolved = resolveDevinBinary({
       env: { PATH: path.join(root, "empty") },
       platform: "darwin",
